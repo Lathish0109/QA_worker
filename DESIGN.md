@@ -1,6 +1,6 @@
 # AI-Powered QA System — Architecture & Design (V1)
 
-Status: **Design phase complete, awaiting approval before implementation.**
+Status: **Approved. Milestone 1 (Foundation) implemented — see README.md for current status.**
 Produced against `AI-QA-System-Design-Phase-Prompt.md`.
 
 ---
@@ -13,7 +13,7 @@ Produced against `AI-QA-System-Design-Phase-Prompt.md`.
 | Database | Dedicated Postgres/Supabase project (not shared with Bug Tracker). |
 | Auth | Own Supabase Auth, independent of the Bug Tracker's login. |
 | LLM provider | Anthropic Claude API, behind a provider-agnostic `AIService` interface. |
-| Version control | Separate GitHub account/repo. Local repo initialized at `C:\QA Systems`; GitHub remote not yet created. |
+| Version control | Separate GitHub account/repo: [github.com/Lathish0109/QA_worker](https://github.com/Lathish0109/QA_worker). |
 | Playwright execution | Dedicated Node/TypeScript worker service, containerized with Docker (default choice — see §6 for why, and the alternatives if you'd rather not run your own container). |
 
 **Open item I could not decide for you:** the Bug Tracker's real `POST /api/bugs` contract (exact fields + auth method). Section 4 below specifies an assumed payload shape. Everything is built so swapping the real contract in later is a one-file change (`packages/bug-tracker-client`) — nothing else in the app needs to know it changed.

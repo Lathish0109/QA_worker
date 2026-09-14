@@ -25,10 +25,10 @@ packages/
    npm install
    ```
 
-2. **Apply the database schema.** This repo's Supabase project (`qkmjvgaiuzofvwntxlrg`) is
-   not connected to any automated migration tool yet — run the SQL by hand once:
-   - Open the [Supabase SQL Editor](https://supabase.com/dashboard/project/qkmjvgaiuzofvwntxlrg/sql/new)
-   - Paste the contents of `packages/db/migrations/0001_init.sql` and run it
+2. **Database schema.** Already applied to the live Supabase project
+   (`qkmjvgaiuzofvwntxlrg`) — `packages/db/migrations/*.sql` is the record of what's been
+   run, in order. If you ever need to reapply from scratch (e.g. a fresh project), run each
+   file in order in the [Supabase SQL Editor](https://supabase.com/dashboard/project/qkmjvgaiuzofvwntxlrg/sql/new).
 
 3. **Environment variables.** `apps/web/.env.local` already has the Supabase keys filled in
    (it's gitignored — never commit it). Still empty:
@@ -46,8 +46,15 @@ packages/
 
 ## Current status (Milestone 1 — Foundation)
 
-- ✅ Monorepo scaffold, Supabase Auth, DB schema
+- ✅ Monorepo scaffold, Supabase Auth, DB schema (applied and verified live — 9 tables,
+  RLS enabled on all of them, zero open security advisories)
 - ✅ Projects: create + list + detail
 - ✅ Requirements: add to a project
 - ⏳ AI test generation, approval flow, Playwright execution, failure analysis, and Bug
   Tracker sync are not implemented yet — see DESIGN.md §8 for the milestone order.
+
+### Known transient issue
+
+Supabase's built-in email sender has a low default rate limit (a few emails/hour), which
+signup testing during setup already tripped. It clears on its own — if signup returns
+`over_email_send_rate_limit`, wait ~15-30 min and retry. This is unrelated to the app code.
