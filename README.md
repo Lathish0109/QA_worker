@@ -9,10 +9,11 @@ See [DESIGN.md](./DESIGN.md) for the full architecture, schema, and phased plan.
 
 ```
 apps/
-  web/      Next.js app — UI + internal API routes (Milestone 1+)
-  worker/   Playwright execution service (Milestone 3, not yet implemented)
+  web/      Next.js app — UI + internal API routes
+  worker/   Playwright execution service — plain local Node process for now
+            (Dockerize later, when deploying somewhere other than your machine)
 packages/
-  shared-types/        TestCase, TestRun, FailureAnalysis, BugPayload, etc.
+  shared-types/        TestCase, TestRun, FailureAnalysis, BugPayload, WorkerRunRequest/Response
   db/                   Supabase client + hand-written DB types + migrations
   ai-service/           AIService interface + AnthropicAIService implementation
   bug-tracker-client/   Client for the ICore Bug Tracker's bug-creation API
@@ -38,17 +39,21 @@ packages/
      ICore Bug Tracker API contract is confirmed (current client code assumes a contract —
      see `packages/bug-tracker-client/src/index.ts`)
 
-4. **Run the web app:**
+4. **Run the web app and the worker** (two terminals, both from repo root):
    ```
-   npm run dev:web
+   npm run dev:web      # Next.js app on http://localhost:3000
+   npm run dev:worker   # Playwright execution worker on http://localhost:4088
    ```
    Visit http://localhost:3000 — it redirects to `/login`. Sign up with any email/password
-   (Supabase Auth); a `profiles` row is created automatically via a DB trigger.
+   (Supabase Auth); a `profiles` row is created automatically via a DB trigger. The worker
+   only needs to be running when you actually trigger a test run from the Test Runs page —
+   everything else works without it, just with `WORKER_URL`/`WORKER_SHARED_SECRET` already
+   set in `apps/web/.env.local` and `apps/worker/.env.local` (both gitignored).
 
 ## Current status
 
-Frontend now has every sidebar page; backend/execution features land in later milestones
-per DESIGN.md §8.
+Frontend has every sidebar page. Execution (Milestone 3) is live; failure analysis and
+Bug Tracker sync are next — see DESIGN.md §8.
 
 - ✅ Monorepo scaffold, Supabase Auth, DB schema (applied and verified live — 9 tables,
   RLS enabled on all of them, zero open security advisories)
@@ -59,9 +64,16 @@ per DESIGN.md §8.
   flow persisted to `test_cases` — verified end-to-end against the live DB (full real
   generation still needs `ANTHROPIC_API_KEY` set; the error path is what's confirmed)
 - ✅ Test Suites & Cases: global filterable list of all test cases (all/pending/approved/rejected)
-- ⏳ Test Runs, Failure Analyzer, Bug Tracker: pages exist and query their real (currently
-  empty) tables, but show honest "not built yet" states — Playwright execution (Milestone 3),
-  failure analysis (4), and ICore Bug Tracker sync (5) aren't implemented yet
+- ✅ Test Runs (Milestone 3): triggering a run executes every approved test case for a
+  project through Playwright (`apps/worker`), synchronously for V1 — no queue/webhook yet.
+  On failure it captures a screenshot, a Playwright trace, and console logs, uploads them to
+  a private Supabase Storage bucket (`evidence`), and the Test Run detail page renders them
+  via short-lived signed URLs. Verified end-to-end with a real pass and a real fail in the
+  same run (`partial` status computed correctly), including a fix for raw ANSI escape codes
+  that were leaking into stored error messages.
+- ⏳ Failure Analyzer, Bug Tracker: pages exist and query their real (currently empty) tables,
+  with honest "not built yet" states — AI failure analysis (Milestone 4) and ICore Bug
+  Tracker sync (Milestone 5) aren't implemented yet
 
 ### Known transient issue
 

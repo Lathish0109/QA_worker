@@ -2,8 +2,18 @@
   "name": "@obsidian/worker",
   "version": "0.1.0",
   "private": true,
-  "description": "Playwright execution worker. Scaffolded but not yet implemented — see DESIGN.md Milestone 3.",
+  "description": "Playwright execution worker for Obsidian QA Engine.",
   "scripts": {
-    "dev": "echo 'apps/worker is not implemented yet (Milestone 3)' && exit 1"
+    "dev": "tsx watch --env-file=.env.local src/server.ts",
+    "start": "tsx --env-file=.env.local src/server.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "@supabase/supabase-js": "^2.116.0",
+    "@obsidian/shared-types": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/node": "^20"
   }
 }

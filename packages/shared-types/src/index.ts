@@ -107,3 +107,32 @@ export interface Requirement {
   createdBy: string;
   createdAt: string;
 }
+
+/** Request body apps/web sends to the worker's POST /run endpoint. */
+export interface WorkerRunRequest {
+  testRunId: string;
+  projectId: string;
+  baseUrl: string;
+  testCases: {
+    id: string;
+    steps: TestStep[];
+    expectedResult: string;
+  }[];
+}
+
+export interface WorkerTestCaseResult {
+  testCaseId: string;
+  status: TestResultStatus;
+  durationMs: number;
+  errorMessage?: string;
+  /** Storage object paths in the private `evidence` bucket, not public URLs. */
+  screenshotPath?: string;
+  tracePath?: string;
+  consoleLogPath?: string;
+}
+
+/** Response body the worker sends back — V1 runs synchronously, no separate webhook. */
+export interface WorkerRunResponse {
+  runStatus: TestRunStatus;
+  results: WorkerTestCaseResult[];
+}
