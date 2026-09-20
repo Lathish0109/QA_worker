@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@obsidian/db';
-import { AnthropicAIService } from '@obsidian/ai-service';
 import { BugTrackerClient } from '@obsidian/bug-tracker-client';
 import type { TestCase, TestStep } from '@obsidian/shared-types';
 import { signEvidenceUrl } from './evidence';
+import { getActiveAIService } from './ai-provider';
 
 type TestResultRow = Database['public']['Tables']['test_results']['Row'];
 type TestCaseRow = Database['public']['Tables']['test_cases']['Row'];
@@ -45,9 +45,9 @@ export async function runFailureAnalysis(
     .single();
   if (!testCaseRow) return null;
 
-  let aiService: AnthropicAIService;
+  let aiService;
   try {
-    aiService = new AnthropicAIService();
+    aiService = await getActiveAIService(supabase);
   } catch {
     return null;
   }
@@ -124,9 +124,9 @@ export async function syncBugForAnalysis(
     .single();
   if (!testCaseRow) return null;
 
-  let aiService: AnthropicAIService;
+  let aiService;
   try {
-    aiService = new AnthropicAIService();
+    aiService = await getActiveAIService(supabase);
   } catch {
     return null;
   }

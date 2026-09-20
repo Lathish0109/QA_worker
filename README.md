@@ -15,7 +15,8 @@ apps/
 packages/
   shared-types/        TestCase, TestRun, FailureAnalysis, BugPayload, WorkerRunRequest/Response
   db/                   Supabase client + hand-written DB types + migrations
-  ai-service/           AIService interface + AnthropicAIService implementation
+  ai-service/           AIService interface + Anthropic/OpenAI/Gemini implementations,
+                        selectable per-workspace from the Settings page
   bug-tracker-client/   Client for the ICore Bug Tracker's bug-creation API
 ```
 
@@ -32,11 +33,11 @@ packages/
    file in order in the [Supabase SQL Editor](https://supabase.com/dashboard/project/qkmjvgaiuzofvwntxlrg/sql/new).
 
 3. **Environment variables.** `apps/web/.env.local` already has the Supabase keys and the
-   worker's shared secret filled in (it's gitignored — never commit it). Still empty, and
-   the only two things standing between this and a fully live system:
-   - `ANTHROPIC_API_KEY` — powers AI test generation, failure analysis, and bug report
-     drafting (all three code paths are built and fail gracefully with a clear error
-     without it — none of them have been exercised against a real model response yet)
+   worker's shared secret filled in (it's gitignored — never commit it). Still empty:
+   - `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` — fill in whichever
+     provider(s) you want to use, then pick the active one on the **Settings** page. Only
+     one needs to be set to get started; all three power the same three AI operations (test
+     generation, failure analysis, bug drafting) behind the same `AIService` interface.
    - `BUG_TRACKER_BASE_URL` / `BUG_TRACKER_API_KEY` — once the real ICore Bug Tracker API
      contract is confirmed, set these to actually sync bugs (current client code assumes a
      contract — see `packages/bug-tracker-client/src/index.ts` — isolated to one file so
@@ -74,21 +75,28 @@ Claude responses (vs. the graceful-failure path) and a real ICore Bug Tracker to
   On failure it captures a screenshot, trace, and console logs to Supabase Storage and
   renders them via short-lived signed URLs. Verified end-to-end with a genuine pass and a
   genuine fail in the same run.
-- ✅ Failure Analyzer: `AnthropicAIService.analyzeFailure()` runs automatically on every
-  failed result right after a run completes (best-effort — never blocks the run), or
-  on-demand via a retry button. The prompt structurally separates confirmed evidence
-  (error message + screenshot) from `rootCauseHypothesis`, which is never asserted as fact.
-- ✅ Bug Tracker: `AnthropicAIService.generateBugReport()` drafts a bug from the failure
-  analysis; the app fills in the structural fields (evidence links, source refs — never
-  AI-generated) and sends it via `BugTrackerClient`. Not yet synced to a real ICore
-  instance since `BUG_TRACKER_BASE_URL`/`BUG_TRACKER_API_KEY` are unset — verified instead
-  via the client's own clear "not configured" error.
+- ✅ Failure Analyzer: `analyzeFailure()` runs automatically on every failed result right
+  after a run completes (best-effort — never blocks the run), or on-demand via a retry
+  button. The prompt structurally separates confirmed evidence (error message + screenshot)
+  from `rootCauseHypothesis`, which is never asserted as fact.
+- ✅ Bug Tracker: `generateBugReport()` drafts a bug from the failure analysis; the app
+  fills in the structural fields (evidence links, source refs — never AI-generated) and
+  sends it via `BugTrackerClient`. Not yet synced to a real ICore instance since
+  `BUG_TRACKER_BASE_URL`/`BUG_TRACKER_API_KEY` are unset — verified instead via the
+  client's own clear "not configured" error.
+- ✅ Settings: pick which AI provider is active — Claude (Anthropic), ChatGPT (OpenAI), or
+  Gemini (Google) — workspace-wide, persisted in `app_settings`. All three implement the
+  same `AIService` interface (`packages/ai-service`), including image input for failure
+  screenshots. Verified end-to-end: switching the active provider correctly routes AI calls
+  and the resulting error names the right provider and env var (e.g. selecting Gemini with
+  no key set fails with "GEMINI_API_KEY is not configured", not Anthropic's).
 
-**To actually test this with real AI output:** set `ANTHROPIC_API_KEY` in
-`apps/web/.env.local`. Everything downstream (test generation, failure analysis, bug
-drafting) starts working immediately — no other changes needed. Bug Tracker sync
-additionally needs `BUG_TRACKER_BASE_URL`/`BUG_TRACKER_API_KEY` once you have ICore's real
-API contract.
+**To actually test this with real AI output:** set at least one of `ANTHROPIC_API_KEY` /
+`OPENAI_API_KEY` / `GEMINI_API_KEY` in `apps/web/.env.local`, then select it on the
+Settings page if it isn't Claude (the default). Everything downstream (test generation,
+failure analysis, bug drafting) starts working immediately — no other changes needed. Bug
+Tracker sync additionally needs `BUG_TRACKER_BASE_URL`/`BUG_TRACKER_API_KEY` once you have
+ICore's real API contract.
 
 ### Known transient issue
 

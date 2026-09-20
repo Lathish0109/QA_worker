@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { AnthropicAIService } from '@obsidian/ai-service';
+import { getActiveAIService, getActiveProvider } from '@/lib/ai-provider';
+import { AI_PROVIDER_ENV_VAR, AI_PROVIDER_LABELS, isProviderConfigured } from '@obsidian/ai-service';
 import type { Json } from '@obsidian/db';
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,15 +35,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Requirement has no associated project' }, { status: 500 });
   }
 
-  let aiService: AnthropicAIService;
-  try {
-    aiService = new AnthropicAIService();
-  } catch {
+  const provider = await getActiveProvider(supabase);
+  if (!isProviderConfigured(provider)) {
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY is not configured on the server yet.' },
+      {
+        error: `${AI_PROVIDER_LABELS[provider]} is selected in Settings, but ${AI_PROVIDER_ENV_VAR[provider]} is not configured on the server yet.`,
+      },
       { status: 503 },
     );
   }
+  const aiService = await getActiveAIService(supabase);
 
   let generated;
   try {

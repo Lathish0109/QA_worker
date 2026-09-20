@@ -226,6 +226,17 @@ export interface Database {
         }>;
         Relationships: [];
       };
+      app_settings: {
+        Row: {
+          key: string;
+          value: Json;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: { key: string; value: Json; updated_by?: string | null };
+        Update: Partial<{ value: Json; updated_by: string | null }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/test-runs', label: 'Test Runs' },
   { href: '/failure-analyzer', label: 'Failure Analyzer' },
   { href: '/bug-tracker', label: 'Bug Tracker' },
+  { href: '/settings', label: 'Settings' },
 ];
 
 export function Sidebar() {
