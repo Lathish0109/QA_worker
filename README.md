@@ -32,7 +32,8 @@ packages/
 
 3. **Environment variables.** `apps/web/.env.local` already has the Supabase keys filled in
    (it's gitignored — never commit it). Still empty:
-   - `ANTHROPIC_API_KEY` — needed once AI test generation is wired into the UI (Milestone 2)
+   - `ANTHROPIC_API_KEY` — required for the AI Test Generator to actually generate test cases
+     (the UI/API/DB path is built; without this key it fails gracefully with a clear error)
    - `BUG_TRACKER_BASE_URL` / `BUG_TRACKER_API_KEY` — needed for Milestone 5, once the real
      ICore Bug Tracker API contract is confirmed (current client code assumes a contract —
      see `packages/bug-tracker-client/src/index.ts`)
@@ -44,14 +45,18 @@ packages/
    Visit http://localhost:3000 — it redirects to `/login`. Sign up with any email/password
    (Supabase Auth); a `profiles` row is created automatically via a DB trigger.
 
-## Current status (Milestone 1 — Foundation)
+## Current status (Milestone 2 — AI Test Generator)
 
 - ✅ Monorepo scaffold, Supabase Auth, DB schema (applied and verified live — 9 tables,
   RLS enabled on all of them, zero open security advisories)
 - ✅ Projects: create + list + detail
 - ✅ Requirements: add to a project
-- ⏳ AI test generation, approval flow, Playwright execution, failure analysis, and Bug
-  Tracker sync are not implemented yet — see DESIGN.md §8 for the milestone order.
+- ✅ AI Test Generator: generate test cases from a requirement (`AnthropicAIService`),
+  review/edit/approve/reject flow, all persisted to `test_cases` — verified end-to-end
+  (generation error handling, edit, approve all confirmed working against the live DB;
+  full real generation still needs `ANTHROPIC_API_KEY` set)
+- ⏳ Playwright execution, failure analysis, and Bug Tracker sync are not implemented yet —
+  see DESIGN.md §8 for the milestone order.
 
 ### Known transient issue
 

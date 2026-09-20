@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const { error } =
+    const { data, error } =
       mode === 'sign-in'
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
@@ -31,7 +31,9 @@ export default function LoginPage() {
       return;
     }
 
-    if (mode === 'sign-up') {
+    // If email confirmation is required, signUp succeeds but returns no
+    // session — the user still needs to confirm before they can sign in.
+    if (mode === 'sign-up' && !data.session) {
       setError('Account created. Check your email to confirm, then sign in.');
       setMode('sign-in');
       return;
