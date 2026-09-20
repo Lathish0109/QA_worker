@@ -42,6 +42,12 @@ packages/
      contract is confirmed, set these to actually sync bugs (current client code assumes a
      contract — see `packages/bug-tracker-client/src/index.ts` — isolated to one file so
      swapping in the real one is cheap)
+   - `CREDENTIALS_ENCRYPTION_KEY` — already filled in and must match exactly between
+     `apps/web/.env.local` and `apps/worker/.env.local` (a 32-byte hex key encrypts project
+     login credentials at rest; generate a new one with
+     `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` if you ever
+     need to rotate it — but rotating invalidates every stored credential, since they can
+     only be decrypted with the key they were encrypted under)
 
 4. **Run the web app and the worker** (two terminals, both from repo root):
    ```
@@ -90,6 +96,18 @@ Claude responses (vs. the graceful-failure path) and a real ICore Bug Tracker to
   screenshots. Verified end-to-end: switching the active provider correctly routes AI calls
   and the resulting error names the right provider and env var (e.g. selecting Gemini with
   no key set fails with "GEMINI_API_KEY is not configured", not Anthropic's).
+- ✅ Login credentials + authenticated test steps: a Project's detail page can now store a
+  named credential (username + password, AES-256-GCM encrypted with `CREDENTIALS_ENCRYPTION_KEY`,
+  decrypted only by the worker, never sent to the LLM or the browser). The AI test generator
+  is told which credential labels exist for a project and can emit a `{"action":"login","target":"<label>"}`
+  step — never the actual username/password — when a requirement needs an authenticated
+  session; the worker resolves that label to real credentials at run time and performs a
+  best-effort generic login (tries common email/password field and submit-button selectors).
+  A real project (`ErrorZero Bug Tracker`, https://errorzero-bug-tracker.vercel.app) and
+  credential are already set up in the live DB. Verified: encryption round-trips correctly
+  and the password never appears anywhere in rendered HTML. **Not verified against the real
+  site** — this sandbox has no outbound internet access (see below), so the actual login
+  flow needs to be run on your machine.
 
 **To actually test this with real AI output:** set at least one of `ANTHROPIC_API_KEY` /
 `OPENAI_API_KEY` / `GEMINI_API_KEY` in `apps/web/.env.local`, then select it on the
@@ -103,3 +121,11 @@ ICore's real API contract.
 Supabase's built-in email sender has a low default rate limit (a few emails/hour), which
 signup testing during setup already tripped. It clears on its own — if signup returns
 `over_email_send_rate_limit`, wait ~15-30 min and retry. This is unrelated to the app code.
+
+### Development environment limitation
+
+The environment this was built in has no outbound internet access (DNS resolution fails
+even for `curl`). Everything that only needs the live Supabase project works fine from
+there, but real AI provider calls and running Playwright against an actual external site
+(as opposed to `localhost`) can only be verified on a machine with real internet access —
+i.e. yours.

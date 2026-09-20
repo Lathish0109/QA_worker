@@ -35,6 +35,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Requirement has no associated project' }, { status: 500 });
   }
 
+  const { data: credentials } = await supabase
+    .from('project_credentials')
+    .select('label')
+    .eq('project_id', project.id);
+
   const provider = await getActiveProvider(supabase);
   if (!isProviderConfigured(provider)) {
     return NextResponse.json(
@@ -51,6 +56,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     generated = await aiService.generateTestCases({
       requirementText: requirement.text,
       baseUrl: project.base_url,
+      availableCredentialLabels: (credentials ?? []).map((c) => c.label),
     });
   } catch (err) {
     return NextResponse.json(

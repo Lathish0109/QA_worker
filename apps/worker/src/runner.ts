@@ -1,11 +1,81 @@
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import { readFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TestStep, WorkerRunRequest, WorkerRunResponse, WorkerTestCaseResult } from '@obsidian/shared-types';
 import { uploadEvidence } from './supabase.js';
+import { getCredential } from './credentials.js';
 
 const STEP_TIMEOUT_MS = 10_000;
+
+// Best-effort selector fallbacks for a generic login form — sites vary, and
+// AI-generated test steps reference a credential by label, not a selector,
+// since they never see the actual username/password.
+const USERNAME_FIELD_SELECTORS = [
+  'input[type="email"]',
+  'input[autocomplete="username"]',
+  'input[name="email"]',
+  'input[name="username"]',
+  '#email',
+  '#username',
+];
+const PASSWORD_FIELD_SELECTORS = ['input[type="password"]', 'input[autocomplete="current-password"]'];
+const SUBMIT_SELECTORS = [
+  'button[type="submit"]',
+  'button:has-text("Sign in")',
+  'button:has-text("Log in")',
+  'button:has-text("Login")',
+];
+
+async function fillFirstMatch(page: Page, selectors: string[], value: string): Promise<boolean> {
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    try {
+      if (await locator.isVisible({ timeout: 1000 })) {
+        await locator.fill(value, { timeout: STEP_TIMEOUT_MS });
+        return true;
+      }
+    } catch {
+      // try the next candidate selector
+    }
+  }
+  return false;
+}
+
+async function clickFirstMatch(page: Page, selectors: string[]): Promise<boolean> {
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    try {
+      if (await locator.isVisible({ timeout: 1000 })) {
+        await locator.click({ timeout: STEP_TIMEOUT_MS });
+        return true;
+      }
+    } catch {
+      // try the next candidate selector
+    }
+  }
+  return false;
+}
+
+async function performLogin(page: Page, projectId: string, credentialLabel: string): Promise<void> {
+  const credential = await getCredential(projectId, credentialLabel);
+  if (!credential) {
+    throw new Error(`No stored credential found for label "${credentialLabel}" on this project.`);
+  }
+
+  const filledUsername = await fillFirstMatch(page, USERNAME_FIELD_SELECTORS, credential.username);
+  if (!filledUsername) {
+    throw new Error('login step could not find a username/email field on the page.');
+  }
+  const filledPassword = await fillFirstMatch(page, PASSWORD_FIELD_SELECTORS, credential.password);
+  if (!filledPassword) {
+    throw new Error('login step could not find a password field on the page.');
+  }
+  const submitted = await clickFirstMatch(page, SUBMIT_SELECTORS);
+  if (!submitted) {
+    throw new Error('login step could not find a submit button on the page.');
+  }
+}
 
 const ANSI_ESCAPE_PATTERN = /\x1b\[[0-9;]*m/g;
 
@@ -19,12 +89,17 @@ function resolveUrl(baseUrl: string, target: string | undefined): string {
   return new URL(target, baseUrl).toString();
 }
 
-async function runStep(page: import('playwright').Page, baseUrl: string, step: TestStep): Promise<void> {
+async function runStep(page: Page, baseUrl: string, projectId: string, step: TestStep): Promise<void> {
   switch (step.action) {
     case 'navigate':
     case 'goto':
       await page.goto(resolveUrl(baseUrl, step.target), { timeout: STEP_TIMEOUT_MS });
       return;
+    case 'login': {
+      if (!step.target) throw new Error('login step is missing a credential label as its target');
+      await performLogin(page, projectId, step.target);
+      return;
+    }
     case 'click':
       await page.click(step.target ?? '', { timeout: STEP_TIMEOUT_MS });
       return;
@@ -63,6 +138,7 @@ async function runStep(page: import('playwright').Page, baseUrl: string, step: T
 async function executeTestCase(
   browser: Browser,
   baseUrl: string,
+  projectId: string,
   testCase: WorkerRunRequest['testCases'][number],
   evidencePrefix: string,
 ): Promise<WorkerTestCaseResult> {
@@ -77,7 +153,7 @@ async function executeTestCase(
 
   try {
     for (const step of testCase.steps) {
-      await runStep(page, baseUrl, step);
+      await runStep(page, baseUrl, projectId, step);
     }
     await context.tracing.stop();
     await context.close();
@@ -146,7 +222,7 @@ export async function runTestSuite(request: WorkerRunRequest): Promise<WorkerRun
 
   try {
     for (const testCase of request.testCases) {
-      const result = await executeTestCase(browser, request.baseUrl, testCase, evidencePrefix);
+      const result = await executeTestCase(browser, request.baseUrl, request.projectId, testCase, evidencePrefix);
       results.push(result);
     }
   } finally {

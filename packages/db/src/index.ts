@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 export type { Database, Json } from './types';
+export { encryptSecret, decryptSecret } from './crypto';
 
 /**
  * Server-only client using the service role key. Never import this from

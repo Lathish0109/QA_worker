@@ -9,7 +9,11 @@ export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export const GENERATE_TEST_CASES_SYSTEM_PROMPT =
   'You are a senior QA engineer generating structured Playwright-executable test cases from a plain-language requirement. ' +
   'Cover positive, negative, edge, and validation scenarios. Steps must be concrete UI actions ' +
-  '(navigate, click, fill, select, assert) a Playwright script could follow directly. ' +
+  '(navigate, click, fill, select, check, uncheck, assert) a Playwright script could follow directly. ' +
+  'If the requirement needs an authenticated session and a credential label is provided in the prompt, ' +
+  'you may emit a step with action "login" and target set to that exact credential label (e.g. ' +
+  '{"action":"login","target":"Primary test account"}) as the step that establishes the session — never invent ' +
+  'a username or password, and never put one in any step\'s target or value. ' +
   'Never include real credentials or secrets in any step.';
 
 export const ANALYZE_FAILURE_SYSTEM_PROMPT =
@@ -127,8 +131,16 @@ export type GenerateTestCasesToolOutput = { testCases: GeneratedTestCase[] };
 export type AnalyzeFailureToolOutput = Omit<FailureAnalysis, 'id' | 'testResultId' | 'createdAt'>;
 export type GenerateBugReportToolOutput = GeneratedBugContent;
 
-export function buildTestCasesUserPrompt(input: { baseUrl: string; requirementText: string }): string {
-  return `Target site: ${input.baseUrl}\n\nRequirement:\n${input.requirementText}`;
+export function buildTestCasesUserPrompt(input: {
+  baseUrl: string;
+  requirementText: string;
+  availableCredentialLabels?: string[];
+}): string {
+  const credentialsLine =
+    input.availableCredentialLabels && input.availableCredentialLabels.length > 0
+      ? `\n\nAvailable credential labels for a "login" step (use the exact label, never the underlying username/password): ${input.availableCredentialLabels.join(', ')}`
+      : '';
+  return `Target site: ${input.baseUrl}\n\nRequirement:\n${input.requirementText}${credentialsLine}`;
 }
 
 export function buildFailureAnalysisTextContext(input: {

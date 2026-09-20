@@ -10,7 +10,8 @@
   "dependencies": {
     "playwright": "^1.48.0",
     "@supabase/supabase-js": "^2.116.0",
-    "@obsidian/shared-types": "*"
+    "@obsidian/shared-types": "*",
+    "@obsidian/db": "*"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

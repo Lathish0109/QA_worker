@@ -16,6 +16,10 @@ export interface GeneratedTestCase {
 export interface GenerateTestCasesInput {
   requirementText: string;
   baseUrl: string;
+  /** Labels of credentials stored for this project (e.g. "Primary test account") —
+   * never the credential values themselves. Lets the AI emit a `login` step
+   * referencing one by name when the requirement implies an authenticated flow. */
+  availableCredentialLabels?: string[];
 }
 
 export interface AnalyzeFailureInput {

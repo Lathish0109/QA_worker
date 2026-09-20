@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { NewRequirementForm } from './new-requirement-form';
+import { CredentialsSection } from './credentials-section';
 
 export default async function ProjectDetailPage({
   params,
@@ -26,6 +27,12 @@ export default async function ProjectDetailPage({
     .from('test_cases')
     .select('requirement_id, status')
     .eq('project_id', id);
+
+  const { data: credentials } = await supabase
+    .from('project_credentials')
+    .select('id, label, username, created_at')
+    .eq('project_id', id)
+    .order('created_at', { ascending: false });
 
   const testCaseCounts = new Map<string, { total: number; approved: number }>();
   for (const tc of testCases ?? []) {
@@ -82,6 +89,8 @@ export default async function ProjectDetailPage({
           })}
         </div>
       </div>
+
+      <CredentialsSection projectId={project.id} credentials={credentials ?? []} />
     </div>
   );
 }
