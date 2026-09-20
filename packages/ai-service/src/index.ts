@@ -4,5 +4,6 @@ export type {
   GenerateBugReportInput,
   GenerateTestCasesInput,
   GeneratedTestCase,
+  GeneratedBugContent,
 } from './types';
 export { AnthropicAIService } from './anthropic-service';

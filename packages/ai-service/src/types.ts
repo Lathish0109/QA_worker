@@ -34,6 +34,17 @@ export interface GenerateBugReportInput {
 }
 
 /**
+ * The creative/summarization fields an LLM can responsibly produce. The
+ * caller (which has DB access) fills in the structural fields — source,
+ * sourceRefs, evidenceLinks — since those are deterministic IDs/paths, not
+ * something an AI should be inventing.
+ */
+export type GeneratedBugContent = Pick<
+  BugPayload,
+  'title' | 'description' | 'severity' | 'priority' | 'stepsToReproduce' | 'expectedResult' | 'actualResult'
+>;
+
+/**
  * Provider-agnostic AI abstraction. Nothing outside this package should
  * import an LLM SDK directly — swap the implementation here to change
  * providers without touching the rest of the app.
@@ -41,5 +52,5 @@ export interface GenerateBugReportInput {
 export interface AIService {
   generateTestCases(input: GenerateTestCasesInput): Promise<GeneratedTestCase[]>;
   analyzeFailure(input: AnalyzeFailureInput): Promise<Omit<FailureAnalysis, 'id' | 'testResultId' | 'createdAt'>>;
-  generateBugReport(input: GenerateBugReportInput): Promise<BugPayload>;
+  generateBugReport(input: GenerateBugReportInput): Promise<GeneratedBugContent>;
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { runFailureAnalysis, syncBugForAnalysis } from '@/lib/pipeline';
 import type { WorkerRunRequest, WorkerRunResponse } from '@obsidian/shared-types';
 
 export async function GET() {
@@ -122,18 +123,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: resultsInsertError } = await supabase.from('test_results').insert(
-    workerResponse.results.map((r) => ({
-      test_run_id: testRun.id,
-      test_case_id: r.testCaseId,
-      status: r.status,
-      duration_ms: r.durationMs,
-      error_message: r.errorMessage,
-      screenshot_url: r.screenshotPath,
-      trace_url: r.tracePath,
-      console_log_url: r.consoleLogPath,
-    })),
-  );
+  const { data: insertedResults, error: resultsInsertError } = await supabase
+    .from('test_results')
+    .insert(
+      workerResponse.results.map((r) => ({
+        test_run_id: testRun.id,
+        test_case_id: r.testCaseId,
+        status: r.status,
+        duration_ms: r.durationMs,
+        error_message: r.errorMessage,
+        screenshot_url: r.screenshotPath,
+        trace_url: r.tracePath,
+        console_log_url: r.consoleLogPath,
+      })),
+    )
+    .select('*');
 
   if (resultsInsertError) {
     return NextResponse.json({ error: resultsInsertError.message }, { status: 500 });
@@ -148,6 +152,19 @@ export async function POST(request: Request) {
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  // Best-effort: analyze failures and sync bugs. Never blocks the response —
+  // if ANTHROPIC_API_KEY / BUG_TRACKER_* aren't configured, this silently
+  // no-ops and the failures just sit unanalyzed until configured later.
+  const failedResults = (insertedResults ?? []).filter(
+    (r) => r.status === 'failed' || r.status === 'error',
+  );
+  for (const result of failedResults) {
+    const analysis = await runFailureAnalysis(supabase, result);
+    if (analysis) {
+      await syncBugForAnalysis(supabase, analysis, result);
+    }
   }
 
   return NextResponse.json({ testRun: updatedRun }, { status: 201 });

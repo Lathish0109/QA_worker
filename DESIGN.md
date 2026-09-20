@@ -1,6 +1,6 @@
 # AI-Powered QA System — Architecture & Design (V1)
 
-Status: **Approved. Milestone 1 (Foundation) implemented — see README.md for current status.**
+Status: **Approved. All 6 V1 milestones implemented — see README.md for current status and what's verified vs. code-complete-but-unexercised.**
 Produced against `AI-QA-System-Design-Phase-Prompt.md`.
 
 ---

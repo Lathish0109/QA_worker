@@ -31,13 +31,16 @@ packages/
    run, in order. If you ever need to reapply from scratch (e.g. a fresh project), run each
    file in order in the [Supabase SQL Editor](https://supabase.com/dashboard/project/qkmjvgaiuzofvwntxlrg/sql/new).
 
-3. **Environment variables.** `apps/web/.env.local` already has the Supabase keys filled in
-   (it's gitignored — never commit it). Still empty:
-   - `ANTHROPIC_API_KEY` — required for the AI Test Generator to actually generate test cases
-     (the UI/API/DB path is built; without this key it fails gracefully with a clear error)
-   - `BUG_TRACKER_BASE_URL` / `BUG_TRACKER_API_KEY` — needed for Milestone 5, once the real
-     ICore Bug Tracker API contract is confirmed (current client code assumes a contract —
-     see `packages/bug-tracker-client/src/index.ts`)
+3. **Environment variables.** `apps/web/.env.local` already has the Supabase keys and the
+   worker's shared secret filled in (it's gitignored — never commit it). Still empty, and
+   the only two things standing between this and a fully live system:
+   - `ANTHROPIC_API_KEY` — powers AI test generation, failure analysis, and bug report
+     drafting (all three code paths are built and fail gracefully with a clear error
+     without it — none of them have been exercised against a real model response yet)
+   - `BUG_TRACKER_BASE_URL` / `BUG_TRACKER_API_KEY` — once the real ICore Bug Tracker API
+     contract is confirmed, set these to actually sync bugs (current client code assumes a
+     contract — see `packages/bug-tracker-client/src/index.ts` — isolated to one file so
+     swapping in the real one is cheap)
 
 4. **Run the web app and the worker** (two terminals, both from repo root):
    ```
@@ -52,28 +55,40 @@ packages/
 
 ## Current status
 
-Frontend has every sidebar page. Execution (Milestone 3) is live; failure analysis and
-Bug Tracker sync are next — see DESIGN.md §8.
+**All 6 V1 milestones from DESIGN.md §8 are built.** The full pipeline — requirement → AI
+test generation → human review/approval → Playwright execution → evidence capture → AI
+failure analysis → bug synced to ICore — is wired end-to-end in code. What's genuinely
+unverified is only the parts that need credentials this environment doesn't have: real
+Claude responses (vs. the graceful-failure path) and a real ICore Bug Tracker to sync to.
 
-- ✅ Monorepo scaffold, Supabase Auth, DB schema (applied and verified live — 9 tables,
-  RLS enabled on all of them, zero open security advisories)
-- ✅ Dashboard, Projects (create/list/detail)
-- ✅ Requirements & Specs: global cross-project list + add form, and per-project add
-- ✅ AI Test Generator: per-requirement generation (`AnthropicAIService`) plus a global
-  work-queue view ranked by what needs generation or review; review/edit/approve/reject
-  flow persisted to `test_cases` — verified end-to-end against the live DB (full real
-  generation still needs `ANTHROPIC_API_KEY` set; the error path is what's confirmed)
-- ✅ Test Suites & Cases: global filterable list of all test cases (all/pending/approved/rejected)
-- ✅ Test Runs (Milestone 3): triggering a run executes every approved test case for a
-  project through Playwright (`apps/worker`), synchronously for V1 — no queue/webhook yet.
-  On failure it captures a screenshot, a Playwright trace, and console logs, uploads them to
-  a private Supabase Storage bucket (`evidence`), and the Test Run detail page renders them
-  via short-lived signed URLs. Verified end-to-end with a real pass and a real fail in the
-  same run (`partial` status computed correctly), including a fix for raw ANSI escape codes
-  that were leaking into stored error messages.
-- ⏳ Failure Analyzer, Bug Tracker: pages exist and query their real (currently empty) tables,
-  with honest "not built yet" states — AI failure analysis (Milestone 4) and ICore Bug
-  Tracker sync (Milestone 5) aren't implemented yet
+- ✅ Monorepo scaffold, Supabase Auth, DB schema + a private `evidence` Storage bucket
+  (applied and verified live, RLS on every table, zero open security advisories)
+- ✅ Dashboard: real aggregate stats (projects, test runs, approved test cases, bugs
+  synced) plus recent test runs and recent AI failure diagnoses
+- ✅ Projects (create/list/detail), Requirements & Specs (global + per-project)
+- ✅ AI Test Generator: generate → review/edit → approve/reject, persisted to `test_cases`,
+  plus a global work-queue view ranked by what needs attention
+- ✅ Test Suites & Cases: global filterable list (all/pending/approved/rejected)
+- ✅ Test Runs: triggering a run executes every approved test case for a project through
+  real Playwright (`apps/worker`, synchronous for V1 — see the code comment on why).
+  On failure it captures a screenshot, trace, and console logs to Supabase Storage and
+  renders them via short-lived signed URLs. Verified end-to-end with a genuine pass and a
+  genuine fail in the same run.
+- ✅ Failure Analyzer: `AnthropicAIService.analyzeFailure()` runs automatically on every
+  failed result right after a run completes (best-effort — never blocks the run), or
+  on-demand via a retry button. The prompt structurally separates confirmed evidence
+  (error message + screenshot) from `rootCauseHypothesis`, which is never asserted as fact.
+- ✅ Bug Tracker: `AnthropicAIService.generateBugReport()` drafts a bug from the failure
+  analysis; the app fills in the structural fields (evidence links, source refs — never
+  AI-generated) and sends it via `BugTrackerClient`. Not yet synced to a real ICore
+  instance since `BUG_TRACKER_BASE_URL`/`BUG_TRACKER_API_KEY` are unset — verified instead
+  via the client's own clear "not configured" error.
+
+**To actually test this with real AI output:** set `ANTHROPIC_API_KEY` in
+`apps/web/.env.local`. Everything downstream (test generation, failure analysis, bug
+drafting) starts working immediately — no other changes needed. Bug Tracker sync
+additionally needs `BUG_TRACKER_BASE_URL`/`BUG_TRACKER_API_KEY` once you have ICore's real
+API contract.
 
 ### Known transient issue
 
