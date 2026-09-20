@@ -6,12 +6,12 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/projects', label: 'Projects' },
-  { href: '/requirements', label: 'Requirements & Specs', disabled: true },
-  { href: '/test-generator', label: 'AI Test Generator', disabled: true },
-  { href: '/test-cases', label: 'Test Suites & Cases', disabled: true },
-  { href: '/test-runs', label: 'Test Runs', disabled: true },
-  { href: '/failure-analyzer', label: 'Failure Analyzer', disabled: true },
-  { href: '/bug-tracker', label: 'Bug Tracker', disabled: true },
+  { href: '/requirements', label: 'Requirements & Specs' },
+  { href: '/test-generator', label: 'AI Test Generator' },
+  { href: '/test-cases', label: 'Test Suites & Cases' },
+  { href: '/test-runs', label: 'Test Runs' },
+  { href: '/failure-analyzer', label: 'Failure Analyzer' },
+  { href: '/bug-tracker', label: 'Bug Tracker' },
 ];
 
 export function Sidebar() {
@@ -37,17 +37,6 @@ export function Sidebar() {
         </div>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname.startsWith(item.href);
-          if (item.disabled) {
-            return (
-              <span
-                key={item.href}
-                className="flex items-center justify-between rounded px-2 py-2 text-sm text-muted/50"
-                title="Coming in a later milestone"
-              >
-                {item.label}
-              </span>
-            );
-          }
           return (
             <Link
               key={item.href}

@@ -45,18 +45,23 @@ packages/
    Visit http://localhost:3000 — it redirects to `/login`. Sign up with any email/password
    (Supabase Auth); a `profiles` row is created automatically via a DB trigger.
 
-## Current status (Milestone 2 — AI Test Generator)
+## Current status
+
+Frontend now has every sidebar page; backend/execution features land in later milestones
+per DESIGN.md §8.
 
 - ✅ Monorepo scaffold, Supabase Auth, DB schema (applied and verified live — 9 tables,
   RLS enabled on all of them, zero open security advisories)
-- ✅ Projects: create + list + detail
-- ✅ Requirements: add to a project
-- ✅ AI Test Generator: generate test cases from a requirement (`AnthropicAIService`),
-  review/edit/approve/reject flow, all persisted to `test_cases` — verified end-to-end
-  (generation error handling, edit, approve all confirmed working against the live DB;
-  full real generation still needs `ANTHROPIC_API_KEY` set)
-- ⏳ Playwright execution, failure analysis, and Bug Tracker sync are not implemented yet —
-  see DESIGN.md §8 for the milestone order.
+- ✅ Dashboard, Projects (create/list/detail)
+- ✅ Requirements & Specs: global cross-project list + add form, and per-project add
+- ✅ AI Test Generator: per-requirement generation (`AnthropicAIService`) plus a global
+  work-queue view ranked by what needs generation or review; review/edit/approve/reject
+  flow persisted to `test_cases` — verified end-to-end against the live DB (full real
+  generation still needs `ANTHROPIC_API_KEY` set; the error path is what's confirmed)
+- ✅ Test Suites & Cases: global filterable list of all test cases (all/pending/approved/rejected)
+- ⏳ Test Runs, Failure Analyzer, Bug Tracker: pages exist and query their real (currently
+  empty) tables, but show honest "not built yet" states — Playwright execution (Milestone 3),
+  failure analysis (4), and ICore Bug Tracker sync (5) aren't implemented yet
 
 ### Known transient issue
 
